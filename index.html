@@ -3,1230 +3,213 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TERMINAL // LEVEL_BASED_CHAOS_STREAM</title>
+  <title>checkra1n Verbose Log Console</title>
   <style>
-    :root {
-      --term-bg: #0d1117;
-      --term-header: #161b22;
-      --term-green: #39ff14;
-      --term-cyan: #00f0ff;
-      --term-dim: #238636;
-      --term-red: #ff5555;
-      --active-font: 'Courier New', Courier, monospace;
-    }
-
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
 
     body {
-      background-color: #050505;
-      color: var(--term-green);
-      font-family: var(--active-font);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
+      margin: 0;
       padding: 20px;
-      position: relative;
-      overflow-x: hidden;
-      transition: font-family 0.15s ease;
+      background-color: #0d0e15;
+      color: #cdd6f4;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
     }
 
-    #snow-canvas {
-      position: fixed;
-      top: 0;
-      left: 0;
+    /* 3D WebGL Canvas Container */
+    #webgl-container {
       width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0;
+      max-width: 650px;
+      height: 200px;
+      margin-bottom: 15px;
     }
 
-    .terminal-window {
+    /* Console / Verbose Log Box */
+    .console-box {
       width: 100%;
-      max-width: 920px;
-      background: var(--term-bg);
-      border: 1px solid var(--term-dim);
-      border-radius: 6px;
-      box-shadow: 0 0 25px rgba(57, 255, 20, 0.15);
+      max-width: 650px;
+      background: #1e1e2e;
+      border: 2px solid #313244;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       overflow: hidden;
-      position: relative;
-      z-index: 1;
-      margin: 20px 0;
     }
 
-    .terminal-header {
-      background: var(--term-header);
+    /* Console Header */
+    .console-header {
+      background: #181825;
       padding: 10px 15px;
       display: flex;
       align-items: center;
-      border-bottom: 1px solid #30363d;
+      justify-content: space-between;
+      border-bottom: 1px solid #313244;
     }
 
-    .terminal-dots {
+    .window-controls {
       display: flex;
-      gap: 6px;
-      margin-right: 15px;
+      gap: 8px;
     }
 
     .dot {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
-    }
-
-    .dot-red { background: #ff5f56; }
-    .dot-yellow { background: #ffbd2e; }
-    .dot-green { background: #27c93f; }
-
-    .terminal-title {
-      font-size: 13px;
-      color: #8b949e;
-      letter-spacing: 1px;
-    }
-
-    .terminal-body {
-      padding: 20px;
-      line-height: 1.5;
-    }
-
-    .banner {
-      color: var(--term-cyan);
-      margin-bottom: 15px;
-      font-size: 13px;
-      white-space: pre-wrap;
-    }
-
-    .mode-tabs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .tab-btn {
-      background: #161b22;
-      border: 1px solid #30363d;
-      color: #8b949e;
-      padding: 6px 14px;
-      font-family: inherit;
-      font-size: 13px;
-      cursor: pointer;
-      border-radius: 3px;
-    }
-
-    .tab-btn.active {
-      border-color: var(--term-green);
-      color: var(--term-green);
-      box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
-    }
-
-    .input-section {
-      margin-bottom: 20px;
-      padding: 15px;
-      border: 1px dashed var(--term-dim);
-      border-radius: 4px;
-    }
-
-    .prompt {
-      color: var(--term-cyan);
-      margin-bottom: 10px;
-      display: block;
-    }
-
-    input[type="file"] {
-      display: none;
-    }
-
-    .file-btn, .action-btn {
-      background: transparent;
-      border: 1px solid var(--term-green);
-      color: var(--term-green);
-      padding: 8px 16px;
-      font-family: inherit;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.2s ease;
       display: inline-block;
-      margin-right: 10px;
-      margin-top: 5px;
     }
 
-    .file-btn:hover, .action-btn:hover {
-      background: var(--term-green);
-      color: var(--term-bg);
-      box-shadow: 0 0 10px var(--term-green);
-    }
+    .dot-close { background-color: #f38ba8; }
+    .dot-min { background-color: #f9e2af; }
+    .dot-max { background-color: #a6e3a1; }
 
-    .file-btn:disabled, .action-btn:disabled {
-      border-color: #555;
-      color: #555;
-      cursor: not-allowed;
-      box-shadow: none;
-      background: transparent;
-    }
-
-    .file-info {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #8b949e;
-    }
-
-    .controls-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-      margin-bottom: 20px;
-    }
-
-    .control-box {
-      border: 1px solid #30363d;
-      padding: 12px;
-      border-radius: 4px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--term-cyan);
-      font-size: 13px;
-    }
-
-    select {
-      width: 100%;
-      background: #161b22;
-      border: 1px solid var(--term-dim);
-      color: var(--term-green);
-      padding: 8px;
-      font-family: inherit;
-      outline: none;
-    }
-
-    .status-line {
-      margin-bottom: 15px;
-      font-size: 13px;
-      min-height: 20px;
-    }
-
-    .status-error { color: var(--term-red) !important; }
-    .status-success { color: var(--term-green) !important; }
-
-    textarea {
-      width: 100%;
-      background: #050505;
-      border: 1px solid var(--term-dim);
-      color: #c9d1d9;
-      font-family: inherit;
-      padding: 10px;
-      font-size: 12px;
-      resize: vertical;
-      outline: none;
-      box-sizing: border-box;
-      margin-bottom: 10px;
-    }
-
-    #direct-text-input { height: 120px; }
-    #output-box { height: 180px; }
-
-    .output-actions {
-      display: flex;
-      gap: 10px;
-    }
-
-    .terminal-footer {
-      margin-top: 25px;
-      padding-top: 12px;
-      border-top: 1px solid #21262d;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      position: relative;
-    }
-
-    .settings-trigger {
-      background: #161b22;
-      border: 1px solid #30363d;
-      color: #8b949e;
-      padding: 5px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      font-family: inherit;
-      border-radius: 4px;
+    .header-title {
       display: flex;
       align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
-    }
-
-    .settings-trigger:hover {
-      border-color: var(--term-cyan);
-      color: var(--term-cyan);
-      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
-    }
-
-    .settings-panel {
-      display: none;
-      position: absolute;
-      bottom: 42px;
-      right: 0;
-      background: #161b22;
-      border: 1px solid var(--term-cyan);
-      border-radius: 6px;
-      padding: 16px;
-      z-index: 50;
-      width: 320px;
-      box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.85);
-    }
-
-    .settings-panel.open {
-      display: block;
-    }
-
-    .settings-group {
-      margin-bottom: 14px;
-    }
-
-    .settings-group:last-child {
-      margin-bottom: 0;
-    }
-
-    .settings-label {
-      font-size: 11px;
-      color: var(--term-cyan);
-      text-transform: uppercase;
-      margin-bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      letter-spacing: 1px;
-    }
-
-    .settings-select {
-      width: 100%;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      color: #c9d1d9;
-      padding: 6px 8px;
-      font-family: inherit;
+      gap: 8px;
       font-size: 12px;
-      outline: none;
-      border-radius: 4px;
+      font-weight: bold;
+      color: #cdd6f4;
     }
 
-    .slider-container {
-      margin-top: 8px;
-    }
-
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 6px;
-      background: #30363d;
-      border-radius: 3px;
-      outline: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
+    /* SVG logo checkra1n trong Header */
+    .checkra1n-svg {
       width: 16px;
       height: 16px;
-      border-radius: 50%;
-      background: var(--term-green);
-      cursor: pointer;
-      box-shadow: 0 0 8px var(--term-green);
-      transition: transform 0.1s;
+      fill: #89b4fa;
     }
 
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
+    /* Console Body Log Content */
+    .console-body {
+      padding: 15px;
+      font-size: 13px;
+      line-height: 1.6;
     }
 
-    .toggle-wrapper {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .log-line {
+      margin-bottom: 6px;
+      word-break: break-word;
     }
 
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 44px;
-      height: 22px;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #30363d;
-      transition: .25s;
-      border-radius: 22px;
-      border: 1px solid #484f58;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 14px;
-      width: 14px;
-      left: 3px;
-      bottom: 3px;
-      background-color: #fff;
-      transition: .25s;
-      border-radius: 50%;
-    }
-
-    input:checked + .slider {
-      background-color: var(--term-dim);
-      border-color: var(--term-green);
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(22px);
-      background-color: var(--term-green);
-    }
+    .tag-info { color: #a6e3a1; font-weight: bold; }
+    .tag-verbose { color: #89b4fa; font-weight: bold; }
+    .tag-warn { color: #f9e2af; font-weight: bold; }
+    .tag-debug { color: #cba6f7; font-weight: bold; }
 
     .cursor {
       display: inline-block;
       width: 8px;
-      height: 14px;
-      background: var(--term-green);
+      height: 15px;
+      background-color: #89b4fa;
       vertical-align: middle;
       animation: blink 1s infinite;
     }
 
     @keyframes blink {
-      0%, 49% { opacity: 1; }
-      50%, 100% { opacity: 0; }
-    }
-
-    /* --- OVERLAY & LOG SMOOTHING STYLES --- */
-    #jailbreak-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: #000000;
-      z-index: 99999;
-      display: none;
-      box-sizing: border-box;
-      overflow: hidden;
-    }
-
-    .center-logo-box {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      pointer-events: none;
-      opacity: 0.95; /* Đậm nét logo */
-      z-index: 1;
-    }
-
-    .os-logo-svg {
-      width: 140px;
-      height: 140px;
-      filter: drop-shadow(0 0 25px rgba(255, 255, 255, 0.8));
-      margin-bottom: 18px;
-    }
-
-    .os-logo-text {
-      color: #ffffff;
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: 7px;
-      text-transform: uppercase;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
-    }
-
-    #verbose-stream-container {
-      position: relative;
-      z-index: 2;
-      width: 100%;
-      height: 100%;
-      overflow-y: auto;
-      padding: 12px 20px;
-      box-sizing: border-box;
-      scroll-behavior: smooth; /* Trượt mượt dòng log */
-    }
-
-    /* Animate cuộn mượt bằng Custom Scrollbar ẩn */
-    #verbose-stream-container::-webkit-scrollbar {
-      width: 0px;
-      background: transparent;
-    }
-
-    #verbose-stream {
-      font-family: 'Courier New', Courier, monospace;
-      color: #e6edf3;
-      font-size: 11px;
-      line-height: 1.25;
-      white-space: pre-wrap;
-      word-break: break-all;
-      text-shadow: 0 0 2px rgba(255, 255, 255, 0.6);
-    }
-
-    .log-row {
-      margin: 0;
-      padding: 0.5px 0;
-      animation: fadeInRow 0.05s ease-out;
-    }
-
-    @keyframes fadeInRow {
-      from { opacity: 0.2; transform: translateY(1px); }
-      to { opacity: 1; transform: translateY(0); }
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
     }
   </style>
 </head>
 <body>
 
-<canvas id="snow-canvas"></canvas>
+  <!-- Khu vực hiển thị biểu tượng 3D checkra1n bằng WebGL -->
+  <div id="webgl-container"></div>
 
-<div id="jailbreak-overlay">
-  <div class="center-logo-box">
-    <div id="os-logo-icon"></div>
-    <div class="os-logo-text" id="os-logo-text">BOOT SEQUENCE</div>
-  </div>
-  <div id="verbose-stream-container">
-    <div id="verbose-stream"></div>
-  </div>
-</div>
-
-<div class="terminal-window">
-  <div class="terminal-header">
-    <div class="terminal-dots">
-      <div class="dot dot-red"></div>
-      <div class="dot dot-yellow"></div>
-      <div class="dot dot-green"></div>
-    </div>
-    <div class="terminal-title">bash - session://root@crypt-node</div>
-  </div>
-
-  <div class="terminal-body">
-    <div class="banner">=====================================================
-* SYSTEM INITIALIZED: STREAM ENCODER/DECODER        *
-* ENGINE: ULTRA-CHAOS STREAM (LEVEL-BASED DENSITY)  *
-* BUFFER CEILING: 100.00 MB                         *
-=====================================================</div>
-
-    <div class="mode-tabs">
-      <button class="tab-btn active" id="tab-file-mode" type="button">> FILE INPUT</button>
-      <button class="tab-btn" id="tab-text-mode" type="button">> DIRECT TEXT INPUT</button>
-    </div>
-
-    <div class="input-section" id="file-input-panel">
-      <span class="prompt">$ source_mode: FILE (txt, image, binary)</span>
-      <label class="file-btn" for="file-picker">> BROWSE FILE</label>
-      <input type="file" id="file-picker">
-      <div class="file-info" id="file-info">NO_PAYLOAD_DETECTED</div>
-    </div>
-
-    <div class="input-section" id="text-input-panel" style="display: none;">
-      <span class="prompt">$ source_mode: STDIN // type or paste string below:</span>
-      <textarea id="direct-text-input" placeholder="Enter plain text, base64 or binary sequence..."></textarea>
-      <div class="file-info" id="direct-text-info">LENGTH: 0 bytes | MAX: 100.00 MB</div>
-    </div>
-
-    <div class="controls-grid">
-      <div class="control-box">
-        <label for="operation-type">[MODE]</label>
-        <select id="operation-type">
-          <option value="encode">ENCODE (Raw Payload -> Encoded)</option>
-          <option value="decode">DECODE (Encoded String -> Raw/Text)</option>
-        </select>
+  <!-- Khu vực hiển thị Màn hình Verbose Log với Logo checkra1n SVG -->
+  <div class="console-box">
+    <div class="console-header">
+      <div class="window-controls">
+        <span class="dot dot-close"></span>
+        <span class="dot dot-min"></span>
+        <span class="dot dot-max"></span>
       </div>
-
-      <div class="control-box">
-        <label for="format-type">[ENCODING FORMAT]</label>
-        <select id="format-type">
-          <option value="base64">Base64</option>
-          <option value="binary">Binary (01000001...)</option>
-        </select>
+      <div class="header-title">
+        <!-- SVG Logo checkra1n (Quân cờ Vua) -->
+        <svg class="checkra1n-svg" viewBox="0 0 20 25" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 2,12 L 5,2 L 10,8 L 15,2 L 18,12 Z"/>
+          <rect x="5" y="13" width="10" height="8" rx="1"/>
+          <rect x="2" y="22" width="16" height="3" rx="1"/>
+        </svg>
+        <span>checkra1n verbose log</span>
       </div>
     </div>
 
-    <button class="action-btn" id="exec-btn" disabled>> EXECUTE PROCESS</button>
-    <div class="status-line" id="status-line"><span class="cursor"></span></div>
-
-    <div class="output-container" id="output-container" style="display: none;">
-      <span class="prompt">$ stdout // result buffer:</span>
-      <textarea id="output-box" readonly></textarea>
-      <div class="output-actions">
-        <button class="action-btn" id="copy-btn">> COPY RESULT</button>
-        <button class="action-btn" id="download-btn">> DOWNLOAD ARTIFACT</button>
+    <div class="console-body">
+      <div class="log-line"><span class="tag-info">[INFO]</span> Booting checkra1n environment...</div>
+      <div class="log-line"><span class="tag-verbose">[VERBOSE]</span> DFU Device connected in recovery mode.</div>
+      <div class="log-line"><span class="tag-verbose">[VERBOSE]</span> Rendering checkra1n 3D asset via WebGL.</div>
+      <div class="log-line"><span class="tag-warn">[WARN]</span> Heap memory allocation set to 65% capacity.</div>
+      <div class="log-line"><span class="tag-debug">[DEBUG]</span> WebAudio context initialized on channel 0.</div>
+      <div class="log-line">
+        <span class="tag-info">&gt;</span> <span id="typed-text">Executing exploit chain...</span> <span class="cursor"></span>
       </div>
     </div>
-
-    <div class="terminal-footer">
-      <button class="settings-trigger" id="settings-btn" type="button">⚙ SETTINGS</button>
-
-      <div class="settings-panel" id="settings-panel">
-        <div class="settings-group">
-          <label class="settings-label" for="font-selector">FONT FAMILY</label>
-          <select class="settings-select" id="font-selector">
-            <option value="'Courier New', Courier, monospace">Terminal Classic (Courier)</option>
-            <option value="'Consolas', 'JetBrains Mono', monospace">Modern Mono (Consolas)</option>
-            <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif">Clean & Modern (Dễ nhìn)</option>
-          </select>
-        </div>
-
-        <div class="settings-group">
-          <div class="toggle-wrapper">
-            <span class="settings-label" style="margin-bottom:0;">VERBOSE LOG SCREEN</span>
-            <label class="switch">
-              <input type="checkbox" id="verbose-toggle" checked>
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="settings-group" id="level-slider-group">
-          <div class="settings-label">
-            <span>CHAOS LEVEL</span>
-            <span id="level-val" style="color: var(--term-green); font-weight: bold;">Level 3 (Vừa)</span>
-          </div>
-          <div class="slider-container">
-            <input type="range" id="level-slider" min="1" max="5" step="1" value="3">
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
-</div>
 
-<script>
-  const MAX_SIZE = 100 * 1024 * 1024;
-  let currentFile = null;
-  let decodedBlob = null;
-  let activeInputMode = 'file';
+  <!-- Nạp thư viện Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // 1. Khởi tạo WebGL Scene
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.z = 5;
 
-  const filePicker = document.getElementById('file-picker');
-  const fileInfo = document.getElementById('file-info');
-  const directTextInput = document.getElementById('direct-text-input');
-  const directTextInfo = document.getElementById('direct-text-info');
-  const execBtn = document.getElementById('exec-btn');
-  const statusLine = document.getElementById('status-line');
-  const outputContainer = document.getElementById('output-container');
-  const outputBox = document.getElementById('output-box');
-  const copyBtn = document.getElementById('copy-btn');
-  const downloadBtn = document.getElementById('download-btn');
-  const operationType = document.getElementById('operation-type');
-  const formatType = document.getElementById('format-type');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
 
-  const tabFileMode = document.getElementById('tab-file-mode');
-  const tabTextMode = document.getElementById('tab-text-mode');
-  const fileInputPanel = document.getElementById('file-input-panel');
-  const textInputPanel = document.getElementById('text-input-panel');
+    // 2. Tạo hình khối Logo 3D checkra1n
+    const checkra1nGroup = new THREE.Group();
 
-  const jailbreakOverlay = document.getElementById('jailbreak-overlay');
-  const verboseContainer = document.getElementById('verbose-stream-container');
-  const verboseStream = document.getElementById('verbose-stream');
-  const osLogoIcon = document.getElementById('os-logo-icon');
-  const osLogoText = document.getElementById('os-logo-text');
-
-  // Quản lý Settings
-  const settingsBtn = document.getElementById('settings-btn');
-  const settingsPanel = document.getElementById('settings-panel');
-  const fontSelector = document.getElementById('font-selector');
-  const verboseToggle = document.getElementById('verbose-toggle');
-  const levelSliderGroup = document.getElementById('level-slider-group');
-  const levelSlider = document.getElementById('level-slider');
-  const levelVal = document.getElementById('level-val');
-
-  // Bản đồ Mức độ (Level) -> [Tên hiển thị, Số dòng log tương ứng]
-  const levelMap = {
-    1: { name: "Level 1 (Ngắn)", lines: 70 },
-    2: { name: "Level 2 (Nhẹ)", lines: 200 },
-    3: { name: "Level 3 (Vừa)", lines: 500 },
-    4: { name: "Level 4 (Nhiều)", lines: 900 },
-    5: { name: "Level 5 (MAX CHAOS)", lines: 1600 }
-  };
-
-  // --- LOGO HỆ ĐIỀU HÀNH AUTO-DETECT & SVG DARK/LIGHT ENHANCED ---
-  function detectOSAndApplyLogo() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-
-    // Check iOS / macOS / iPad
-    if (/iPad|iPhone|iPod|Macintosh|Mac OS X/i.test(userAgent)) {
-      osLogoIcon.innerHTML = `
-        <svg class="os-logo-svg" viewBox="0 0 170 170" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-5.03.23-9.83-1.83-14.42-6.18-3.32-3.03-7.23-7.85-11.75-14.45-6.22-9.13-11.12-19.16-14.7-30.08-3.58-10.92-5.37-21.46-5.37-31.62 0-14.32 3.65-26.06 10.95-35.22 7.3-9.15 16.42-13.82 27.38-14.02 5.14 0 10.51 1.25 16.1 3.75 5.59 2.5 9.4 3.75 11.43 3.75 1.8 0 5.75-1.3 11.86-3.9 6.11-2.6 11.23-3.76 15.37-3.48 11.41.6 20.81 4.88 28.18 12.83-10.22 6.18-15.22 14.82-15.01 25.92.21 8.81 3.58 16.27 10.11 22.38 6.53 6.11 14.28 9.73 23.25 10.87-2.31 6.87-5.35 13.86-9.12 20.97zM119.22 31.8c0-6.83 2.52-13.36 7.56-19.59 5.04-6.23 11.38-10.02 19.03-11.37.19 1.48.28 2.8.28 3.96 0 6.95-2.62 13.62-7.86 20.01-5.24 6.39-11.59 10.13-19.05 11.23-.13-.91-.2-1.66-.2-2.24z" fill="#FFFFFF"/>
-        </svg>`;
-      osLogoText.textContent = "CHECKRA1N // DARWIN OS";
-    } 
-    // Check Windows
-    else if (/Win32|Win64|Windows|WinCE/i.test(userAgent)) {
-      osLogoIcon.innerHTML = `
-        <svg class="os-logo-svg" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M0 12.402L35.688 7.525V42.06H0V12.402ZM0 45.94H35.688V80.475L0 75.598V45.94ZM39.697 6.974L88 0V42.06H39.697V6.974ZM39.697 45.94H88V88L39.697 81.026V45.94Z" fill="#FFFFFF"/>
-        </svg>`;
-      osLogoText.textContent = "WINDOWS RECOVERY";
-    } 
-    // Default fallback (Linux/Android/Other)
-    else {
-      osLogoIcon.innerHTML = `
-        <svg class="os-logo-svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="4" y="4" width="16" height="16" rx="2"/>
-          <rect x="9" y="9" width="6" height="6"/>
-          <line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/>
-          <line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/>
-          <line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/>
-          <line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/>
-        </svg>`;
-      osLogoText.textContent = "KERNEL EXPLOIT ENGINE";
-    }
-  }
-
-  settingsBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    settingsPanel.classList.toggle('open');
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!settingsPanel.contains(e.target) && e.target !== settingsBtn) {
-      settingsPanel.classList.remove('open');
-    }
-  });
-
-  fontSelector.addEventListener('change', (e) => {
-    const selectedFont = e.target.value;
-    document.documentElement.style.setProperty('--active-font', selectedFont);
-    document.body.style.fontFamily = selectedFont;
-  });
-
-  // Ẩn/hiện slider mức độ theo công tắc Verbose
-  verboseToggle.addEventListener('change', (e) => {
-    levelSliderGroup.style.display = e.target.checked ? 'block' : 'none';
-  });
-
-  levelSlider.addEventListener('input', (e) => {
-    const lvl = e.target.value;
-    levelVal.textContent = levelMap[lvl].name;
-  });
-
-  tabFileMode.addEventListener('click', () => {
-    activeInputMode = 'file';
-    tabFileMode.classList.add('active');
-    tabTextMode.classList.remove('active');
-    fileInputPanel.style.display = 'block';
-    textInputPanel.style.display = 'none';
-    validateState();
-  });
-
-  tabTextMode.addEventListener('click', () => {
-    activeInputMode = 'text';
-    tabTextMode.classList.add('active');
-    tabFileMode.classList.remove('active');
-    fileInputPanel.style.display = 'none';
-    textInputPanel.style.display = 'block';
-    validateState();
-  });
-
-  directTextInput.addEventListener('input', () => {
-    const text = directTextInput.value;
-    const bytes = new Blob([text]).size;
-    directTextInfo.textContent = `PAYLOAD: ${(bytes / 1024 / 1024).toFixed(2)} MB (${bytes.toLocaleString()} bytes) | MAX: 100.00 MB`;
-    
-    if (bytes > MAX_SIZE) {
-      statusLine.className = 'status-line status-error';
-      statusLine.textContent = `[ERROR] TEXT PAYLOAD EXCEEDS 100MB LIMIT (${(bytes / 1024 / 1024).toFixed(2)} MB)`;
-      execBtn.disabled = true;
-    } else {
-      validateState();
-    }
-  });
-
-  filePicker.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > MAX_SIZE) {
-      statusLine.className = 'status-line status-error';
-      statusLine.textContent = `[ERROR] FILE EXCEEDS 100MB LIMIT (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-      filePicker.value = '';
-      currentFile = null;
-      execBtn.disabled = true;
-      return;
-    }
-
-    currentFile = file;
-    fileInfo.textContent = `IDENTIFIED: [${file.name}] - ${(file.size / 1024 / 1024).toFixed(2)} MB (${file.type || 'stream'})`;
-    validateState();
-  });
-
-  function validateState() {
-    if (activeInputMode === 'file') {
-      if (currentFile && currentFile.size <= MAX_SIZE) {
-        statusLine.className = 'status-line status-success';
-        statusLine.textContent = '[READY] File payload mounted.';
-        execBtn.disabled = false;
-      } else {
-        execBtn.disabled = true;
-      }
-    } else {
-      const bytes = new Blob([directTextInput.value]).size;
-      if (bytes > 0 && bytes <= MAX_SIZE) {
-        statusLine.className = 'status-line status-success';
-        statusLine.textContent = '[READY] Text stream mounted.';
-        execBtn.disabled = false;
-      } else if (bytes > MAX_SIZE) {
-        execBtn.disabled = true;
-      } else {
-        statusLine.className = 'status-line';
-        statusLine.textContent = 'Awaiting input payload...';
-        execBtn.disabled = true;
-      }
-    }
-  }
-
-  let linesPrintedCount = 0;
-
-  // --- LOG RENDERER FLUID SMOOTHING ENGINE ---
-  async function printLogBatch(lines) {
-    for (let i = 0; i < lines.length; i++) {
-      const div = document.createElement('div');
-      div.className = 'log-row';
-      div.textContent = lines[i];
-      verboseStream.appendChild(div);
-      linesPrintedCount++;
-
-      // Giữ tối đa 600 dòng để nhẹ RAM
-      if (verboseStream.childNodes.length > 600) {
-        verboseStream.removeChild(verboseStream.firstChild);
-      }
-      
-      // Cuộn mượt liên tục theo chân dòng log
-      verboseContainer.scrollTop = verboseContainer.scrollHeight;
-
-      // Yield frame để tạo hiệu ứng chảy dòng liên tục mượt mà
-      if (i % 2 === 0) {
-        await new Promise(r => requestAnimationFrame(r));
-      }
-    }
-  }
-
-  function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
-  }
-
-  function getRandomHex(len = 8) {
-    return Array.from({length: len}, () => Math.floor(Math.random() * 16).toString(16)).join('');
-  }
-
-  function generateDynamicHexDump(offset) {
-    const lengths = [8, 12, 16, 20, 24];
-    const len = lengths[Math.floor(Math.random() * lengths.length)];
-    let hex = [];
-    let ascii = '';
-    for (let i = 0; i < len; i++) {
-      const b = Math.floor(Math.random() * 256);
-      hex.push(b.toString(16).padStart(2, '0').toUpperCase());
-      ascii += (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.';
-    }
-    return `0x${offset.toString(16).padStart(8, '0')}: ${hex.join(' ')}  |${ascii}|`;
-  }
-
-  const chaoticSnippets = [
-    () => `irq_${Math.floor(Math.random()*64)}: interrupt dispatched (vector 0x${getRandomHex(2)}) flags=0x0000000${Math.floor(Math.random()*8)}`,
-    () => `dma_chan_${Math.floor(Math.random()*16)}: snoop buffer sync @ phys 0x${getRandomHex(8)} [FLUSHED]`,
-    () => `mmio_read32(0x${getRandomHex(8)}) -> 0x${getRandomHex(8).toUpperCase()} [ACK]`,
-    () => `sched: yield core #${Math.floor(Math.random()*8)} delta=${Math.floor(Math.random()*900 + 100)}ns load_avg=${(Math.random()*4).toFixed(2)}`,
-    () => `arm64_reg: x${Math.floor(Math.random()*31)}=0x${getRandomHex(16)}`,
-    () => `x86_reg: r${['ax','bx','cx','dx','si','di','bp','sp','8','9','10','11','12','13','14','15'][Math.floor(Math.random()*16)]}=0x${getRandomHex(16)}`,
-    () => `vfs: lookup probe namecache hash=0x${getRandomHex(8)} [HIT]`,
-    () => `acpi_pm: cpu state C${Math.floor(Math.random()*4)} -> C0 latency=${Math.floor(Math.random()*25)}us`,
-    () => `ipc_port_lookup: space=0x${getRandomHex(8)} name=0x${getRandomHex(4)} [GRANTED]`,
-    () => `slab_freelist: slab_${Math.floor(Math.random()*64)} index 0x${getRandomHex(2)} free_count=${Math.floor(Math.random()*512)}`,
-    () => `bus_space_barrier: tag=0x${getRandomHex(4)} handle=0x${getRandomHex(8)} offset=0x0 len=0x${getRandomHex(3)}`,
-    () => `tlbi_va: pgtbl walk 0xfffffff0${getRandomHex(8)} [INVALIDATED]`,
-    () => `kauth_cred_get: uid=0 gid=0 auid=${Math.floor(Math.random()*501)} groups=[0, 1, 20, 80]`,
-    () => `raw_vector_dump: ${Array.from({length: 8}, () => getRandomHex(2).toUpperCase()).join(' ')}`,
-    () => `page_fault: handler resolved at vaddr 0x${getRandomHex(12)} (flags: 0x${Math.floor(Math.random()*16).toString(16)})`,
-    () => `syscall[${Math.floor(Math.random()*512)}]: sys_mprotect(0x${getRandomHex(8)}, len=0x${getRandomHex(4)}, prot=0x7) -> 0x0`,
-    () => `kmem_alloc: tag="IOBufferMemoryDescriptor" size=${Math.floor(Math.random()*8192)} bytes @ 0x${getRandomHex(12)}`,
-    () => `pcie_link: port ${Math.floor(Math.random()*8)} speed=8.0GT/s width=x${[1,2,4,8,16][Math.floor(Math.random()*5)]} aspm=L1`,
-    () => `crypto_sha256_acc: block #${Math.floor(Math.random()*1000)} state=[0x${getRandomHex(8)}, 0x${getRandomHex(8)}]`,
-    () => `heap_guard: canary check @ 0x${getRandomHex(12)} [INTEGRITY_OK]`,
-    () => `thread_switch: prev_pid=${Math.floor(Math.random()*500)} next_pid=${Math.floor(Math.random()*500)} prio=${Math.floor(Math.random()*31)}`,
-    () => `zalloc: zone "vm.objects" elements=${Math.floor(Math.random()*40000)} size=0x${getRandomHex(3)}`,
-    () => `kernel_trap[0x${getRandomHex(2)}]: ESR_EL1=0x${getRandomHex(8)} FAR_EL1=0x${getRandomHex(12)}`,
-    () => `arm_smccc_hvc(0x${getRandomHex(8)}, 0x${getRandomHex(8)}) -> ret=0x0`,
-    () => `cs_blobs: signature verified for cdhash 0x${getRandomHex(16)}...`,
-    () => `iokit_usb: pipe endpoint ep${Math.floor(Math.random()*4)}in max_packet_size=${[64,512,1024][Math.floor(Math.random()*3)]}`,
-    () => `mach_msg_trap: msg_id=0x${getRandomHex(4)} size=${Math.floor(Math.random()*512)} options=0x11`,
-    () => `vnode_ref: vp=0x${getRandomHex(10)} usecount=${Math.floor(Math.random()*10+1)} iocount=1`,
-    () => `entropy_pool: gathered 256 bits from jitter RNG (pool_fill: ${Math.floor(Math.random()*100)}%)`,
-    () => `x86_cr0: 0x80050033 | cr4: 0x003706e0 | efer: 0x00000d01`,
-    () => `arm_cpsr: 0x${getRandomHex(8)} [EL1h, SP_EL1, D=1, A=1, I=1, F=1]`,
-    () => `pstate_flags: [Negative=0, Zero=1, Carry=1, Overflow=0]`
-  ];
-
-  function getChaosLine() {
-    return chaoticSnippets[Math.floor(Math.random() * chaoticSnippets.length)]();
-  }
-
-  const shortSnippets = ["ok", "[OK]", "sync;", "isb sy", "dsb ish", "nop", "ret", "yield", "clrex", "wfe", "tlbia", "b.eq 0x18", "mov x0, #0", "cli", "sti", "cld", "rep stosq"];
-  const longSnippets = [
-    () => `kalloc.type.var: allocated chunk struct size 0x${getRandomHex(4)} at virtual address 0xfffffff0${getRandomHex(8)} backing physical PFN 0x${getRandomHex(6)} [COMMITTED]`,
-    () => `USBHostPipe[0x${getRandomHex(8)}]::submitTransfer(reqType=0x21, req=0x01, val=0x0200, idx=0x0000, len=0x0040) -> transfer returned status: 0x00000000 (kIOReturnSuccess)`,
-    () => `sandbox_extension_consume: path="/private/var/root/Library/Caches/com.apple.dyld/shared_cache_arm64e" token=0x${getRandomHex(16)} flags=0x00000001 status=GRANTED`,
-    () => `vnode_authorize: context=[uid:0 gid:0 pid:1 ppid:0] action=VREAD|VWRITE path="/private/var/tmp/stream_payload_${getRandomHex(8)}.artifact" granted=0x00000001`
-  ];
-
-  // --- THỰC THI ENCODE/DECODE THEO MỨC ĐỘ (CHAOS LEVEL) ---
-  execBtn.addEventListener('click', async () => {
-    const op = operationType.value;
-    const format = formatType.value;
-    const isVerboseActive = verboseToggle.checked;
-    
-    // Lấy số dòng mục tiêu từ mức độ được chọn
-    const currentLevel = parseInt(levelSlider.value, 10);
-    const targetLineCount = levelMap[currentLevel].lines;
-    linesPrintedCount = 0;
-
-    if (isVerboseActive) {
-      detectOSAndApplyLogo(); // Kiểm tra OS & đặt Logo đậm nét
-      jailbreakOverlay.style.display = 'block';
-      verboseStream.innerHTML = '';
-      verboseContainer.scrollTop = 0;
-    }
-
-    outputContainer.style.display = 'none';
-    outputBox.value = '';
-    decodedBlob = null;
-    execBtn.disabled = true;
-
-    // Boot Phase
-    if (isVerboseActive) {
-      const bootSequences = [
-        "ACPI: Early table parsing: FACP at 0x000000008F028000 (v05)",
-        "ACPI: DSDT 0x000000008F024000, 0x03420 bytes initialized",
-        "Darwin Kernel Version 21.6.0: root:xnu-8020.140.49~1/RELEASE_ARM64_T8015",
-        "pmap_bootstrap: physical memory size: 0x0000000100000000 (4096 MB)",
-        "zone_init: 142 distinct kernel zones initialized",
-        "checkm8: identified target DFU device in recovery loop",
-        "Target report: CPID:0x8015 CPRV:0x21 BDID:0x04 CPFM:0x03 SCEP:0x01",
-        "Allocating low-mem dummy pages at physical base 0x0000000080000000",
-        "Leaking SecureROM base pointer: 0x0000000010000000",
-        "Heap shaping stage 1/3: spraying heap slabs across cache lines",
-        "USB packet injection: bmRequestType=0x21 bRequest=1 wValue=0x0200",
-        "Triggering UaF condition at kernel page: 0xfffffff0075e89a0",
-        "Deploying stage 2 shellcode to SRAM address 0x0000000018000000",
-        "Demoting secure monitor mode: bitmask 0x00000000 (EL3 active)",
-        "STAGE 2 EXPLOIT VERIFIED. ATTACHING REALTIME DATA PIPELINE."
-      ];
-
-      for (let i = 0; i < bootSequences.length; i += 2) {
-        await printLogBatch([
-          bootSequences[i],
-          getChaosLine(),
-          getChaosLine(),
-          bootSequences[i + 1] || "sync;",
-          getChaosLine(),
-          getChaosLine()
-        ]);
-        await sleep(8);
-      }
-    }
-
-    try {
-      let uint8Data;
-      let rawString = '';
-
-      if (activeInputMode === 'file') {
-        if (isVerboseActive) {
-          await printLogBatch([
-            `Opening descriptor handle for file: [${currentFile.name}]`,
-            getChaosLine(),
-            getChaosLine(),
-            "sync;"
-          ]);
-          await sleep(8);
-        }
-
-        if (op === 'encode') {
-          const buffer = await currentFile.arrayBuffer();
-          uint8Data = new Uint8Array(buffer);
-        } else {
-          rawString = (await currentFile.text()).trim();
-        }
-      } else {
-        rawString = directTextInput.value.trim();
-        if (op === 'encode') {
-          uint8Data = new TextEncoder().encode(rawString);
-        }
-      }
-
-      // Xử lý Encode / Decode logic
-      if (op === 'encode') {
-        const total = uint8Data.length;
-        const chunkSize = isVerboseActive ? (format === 'base64' ? 64 : 32) : 65536;
-        let processed = 0;
-        let result = '';
-
-        if (format === 'base64') {
-          let binary = '';
-          while (processed < total) {
-            const next = Math.min(processed + chunkSize, total);
-            const chunk = uint8Data.subarray(processed, next);
-            binary += String.fromCharCode.apply(null, chunk);
-
-            if (isVerboseActive) {
-              const shortL = shortSnippets[Math.floor(Math.random() * shortSnippets.length)];
-
-              await printLogBatch([
-                `[TX 0x${processed.toString(16).padStart(8, '0')}] mapped ${chunk.length}B | ${(processed / 1024).toFixed(2)}KB/${(total / 1024).toFixed(2)}KB (${Math.round((processed / total) * 100)}%)`,
-                getChaosLine(),
-                getChaosLine(),
-                generateDynamicHexDump(processed),
-                getChaosLine(),
-                getChaosLine(),
-                shortL,
-                getChaosLine()
-              ]);
-              await sleep(6);
-            }
-            processed = next;
-          }
-          result = btoa(binary);
-
-        } else {
-          let binaryArray = [];
-          while (processed < total) {
-            const next = Math.min(processed + chunkSize, total);
-            for (let i = processed; i < next; i++) {
-              binaryArray.push(uint8Data[i].toString(2).padStart(8, '0'));
-            }
-
-            if (isVerboseActive) {
-              const shortL = shortSnippets[Math.floor(Math.random() * shortSnippets.length)];
-              await printLogBatch([
-                `[BITWISE 0x${processed.toString(16).padStart(8, '0')}] ${next - processed} octets | ${(processed / 1024).toFixed(2)}KB/${(total / 1024).toFixed(2)}KB`,
-                getChaosLine(),
-                getChaosLine(),
-                generateDynamicHexDump(processed),
-                getChaosLine(),
-                getChaosLine(),
-                shortL,
-                getChaosLine()
-              ]);
-              await sleep(6);
-            }
-            processed = next;
-          }
-          result = binaryArray.join(' ');
-        }
-
-        outputBox.value = result;
-        decodedBlob = new Blob([result], { type: 'text/plain;charset=utf-8' });
-
-      } else {
-        // Decode logic
-        if (format === 'base64') {
-          const cleanB64 = rawString.replace(/\s+/g, '');
-          const binaryString = atob(cleanB64);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          const chunkSize = isVerboseActive ? 64 : 65536;
-
-          for (let i = 0; i < len; i += chunkSize) {
-            const end = Math.min(i + chunkSize, len);
-            for (let j = i; j < end; j++) {
-              bytes[j] = binaryString.charCodeAt(j);
-            }
-
-            if (isVerboseActive) {
-              const shortL = shortSnippets[Math.floor(Math.random() * shortSnippets.length)];
-              await printLogBatch([
-                `[DECODE 0x${i.toString(16).padStart(8, '0')}] recovered ${end - i}B (${end}/${len})`,
-                getChaosLine(),
-                getChaosLine(),
-                generateDynamicHexDump(i),
-                getChaosLine(),
-                getChaosLine(),
-                shortL,
-                getChaosLine()
-              ]);
-              await sleep(6);
-            }
-          }
-
-          decodedBlob = new Blob([bytes]);
-          const decodedText = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-          outputBox.value = `[DECODE SUCCESS: ${len} bytes recovered]\n` + decodedText;
-
-        } else {
-          const cleanBin = rawString.replace(/[^01]/g, '');
-          if (cleanBin.length % 8 !== 0) {
-            throw new Error(`Unaligned binary bits (${cleanBin.length} bits, not divisible by 8)`);
-          }
-
-          const totalBytes = cleanBin.length / 8;
-          const bytes = new Uint8Array(totalBytes);
-          const step = isVerboseActive ? 32 : 16384;
-
-          for (let i = 0; i < totalBytes; i += step) {
-            const end = Math.min(i + step, totalBytes);
-            for (let j = i; j < end; j++) {
-              bytes[j] = parseInt(cleanBin.slice(j * 8, (j + 1) * 8), 2);
-            }
-
-            if (isVerboseActive) {
-              const shortL = shortSnippets[Math.floor(Math.random() * shortSnippets.length)];
-              await printLogBatch([
-                `[BIN_UNPACK 0x${i.toString(16).padStart(8, '0')}] ${end - i} octets (${end}/${totalBytes})`,
-                getChaosLine(),
-                getChaosLine(),
-                generateDynamicHexDump(i),
-                getChaosLine(),
-                getChaosLine(),
-                shortL,
-                getChaosLine()
-              ]);
-              await sleep(6);
-            }
-          }
-
-          decodedBlob = new Blob([bytes]);
-          const decodedText = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-          outputBox.value = `[DECODE SUCCESS: ${totalBytes} bytes recovered]\n` + decodedText;
-        }
-      }
-
-      // Bù đủ số dòng theo Mức độ (Chaos Level) được cài đặt
-      if (isVerboseActive) {
-        while (linesPrintedCount < targetLineCount) {
-          const remaining = targetLineCount - linesPrintedCount;
-          const batchSize = Math.min(remaining, 8);
-          const batch = [];
-          for (let k = 0; k < batchSize; k++) {
-            if (k % 3 === 0) {
-              batch.push(generateDynamicHexDump(Math.floor(Math.random() * 0xfffffff)));
-            } else if (k % 5 === 0) {
-              batch.push(longSnippets[Math.floor(Math.random() * longSnippets.length)]());
-            } else {
-              batch.push(getChaosLine());
-            }
-          }
-          await printLogBatch(batch);
-          await sleep(5);
-        }
-
-        await printLogBatch([
-          "Freeing transient heap allocation chunks: 0x00000000 [SUCCESS]",
-          getChaosLine(),
-          "sync;",
-          getChaosLine(),
-          "Verifying final hash checksum against cryptographic state table: [MATCH]",
-          "Demoting processor execution privilege back to Userland Ring 3",
-          "[OK]",
-          "ALL PROCESS STAGES CONFIRMED. RETURNING THREAD CONTROL TO HOST ENVIRONMENT."
-        ]);
-        await sleep(250);
-      }
-
-      statusLine.className = 'status-line status-success';
-      statusLine.textContent = `[SUCCESS] Process executed cleanly. Buffer ready.`;
-      outputContainer.style.display = 'block';
-
-    } catch (err) {
-      if (isVerboseActive) {
-        await printLogBatch([
-          `FATAL TRAP: Unhandled kernel panic: ${err.message}`,
-          getChaosLine(),
-          getChaosLine(),
-          "Backtrace: [0xfffffff007204120 0xfffffff007204988 0xfffffff0075e89a0]",
-          "Halting CPU cores to prevent memory corruption."
-        ]);
-        await sleep(500);
-      }
-
-      statusLine.className = 'status-line status-error';
-      statusLine.textContent = `[FAULT] Process failed: ${err.message}`;
-    } finally {
-      jailbreakOverlay.style.display = 'none';
-      execBtn.disabled = false;
-    }
-  });
-
-  copyBtn.addEventListener('click', () => {
-    outputBox.select();
-    navigator.clipboard.writeText(outputBox.value).then(() => {
-      copyBtn.textContent = '> COPIED!';
-      setTimeout(() => copyBtn.textContent = '> COPY RESULT', 2000);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x89b4fa,
+      wireframe: true,
+      emissive: 0x111827
     });
-  });
 
-  downloadBtn.addEventListener('click', () => {
-    if (!decodedBlob) return;
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(decodedBlob);
-    link.download = `artifact_${Date.now()}.${operationType.value === 'encode' ? 'txt' : 'bin'}`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-  });
+    // Thân quân cờ
+    const baseGeo = new THREE.CylinderGeometry(0.6, 0.8, 0.8, 8);
+    const baseMesh = new THREE.Mesh(baseGeo, mat);
+    baseMesh.position.y = -0.4;
+    checkra1nGroup.add(baseMesh);
 
-  // Snow Canvas Engine
-  const canvas = document.getElementById('snow-canvas');
-  const ctx = canvas.getContext('2d');
-  let width, height, flakes;
+    // Đầu vương miện checkra1n
+    const crownGeo = new THREE.ConeGeometry(0.9, 0.8, 5, 1, true);
+    const crownMesh = new THREE.Mesh(crownGeo, mat);
+    crownMesh.position.y = 0.4;
+    crownMesh.rotation.x = Math.PI;
+    checkra1nGroup.add(crownMesh);
 
-  function initSnow() {
-    width = window.innerWidth;
-    height = window.innerHeight;
-    canvas.width = width;
-    canvas.height = height;
-    flakes = [];
-    const numFlakes = Math.floor(width / 6);
-    for (let i = 0; i < numFlakes; i++) {
-      flakes.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        r: Math.random() * 2 + 0.5,
-        d: Math.random() * 1,
-        o: Math.random() * 0.5 + 0.2
-      });
+    scene.add(checkra1nGroup);
+
+    // 3. Thiết lập Ánh sáng
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const pointLight = new THREE.PointLight(0x89b4fa, 1.2);
+    pointLight.position.set(5, 5, 5);
+    scene.add(pointLight);
+
+    // 4. Vòng lặp Render / Animation
+    function animate() {
+      requestAnimationFrame(animate);
+      checkra1nGroup.rotation.y += 0.015;
+      renderer.render(scene, camera);
     }
-  }
+    animate();
 
-  let angle = 0;
-  function drawSnow() {
-    ctx.clearRect(0, 0, width, height);
-    angle += 0.01;
-    for (let i = 0; i < flakes.length; i++) {
-      const f = flakes[i];
-      f.y += Math.cos(angle + f.d) + 1 + f.r / 2;
-      f.x += Math.sin(angle) * 1;
-      if (f.y > height + 5) {
-        flakes[i] = { x: Math.random() * width, y: -10, r: f.r, d: f.d, o: f.o };
-      }
-      ctx.fillStyle = `rgba(255, 255, 255, ${f.o})`;
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2, true);
-      ctx.fill();
-    }
-    requestAnimationFrame(drawSnow);
-  }
-
-  initSnow();
-  window.addEventListener('resize', initSnow);
-  drawSnow();
-</script>
+    // Tự động căn chỉnh lại kích thước khi thay đổi màn hình
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+  </script>
 </body>
 </html>
